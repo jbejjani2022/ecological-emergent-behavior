@@ -1,3 +1,5 @@
+![alt text](https://github.com/jbejjani2022/ecological-emergent-behavior/blob/main/images/fig1.png?raw=true)
+
 # Ecological Emergent Behavior
 This is the experimental code for "The Emergence of Complex Behavior in Large-Scale Ecological Environments."
 
