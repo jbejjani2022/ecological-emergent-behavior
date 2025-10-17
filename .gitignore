@@ -1,0 +1,12 @@
+__pycache__
+*.swp
+*.swo
+*.egg-info
+wandb
+*.state
+.DS_Store
+*.data
+*.env
+slurm/
+*.out
+*.err

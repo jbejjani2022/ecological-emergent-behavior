@@ -3,17 +3,16 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "fitness_of_intelligence"
+name = "ecological_emergent_behavior"
 version = "0.0.0"
 authors = [
   {name="Joseph Bejjani", email="jbejjani2022@gmail.com"},
-  {name="Chase Van Amburg", email=""},
-  {name="Chengrui Wang", email=""},
-  {name="Chloe Su", email="hsu@"},
+  {name="Chase Van Amburg"},
+  {name="Chengrui Wang"},
+  {name="Chloe Su"},
   {name="Aaron Walsman", email="aaronwalsman@gmail.com"},
 ]
-description = "Experiment code for \"The Emergence of Complex Behavior in
-Large-Scale Ecological Environments\""
+description = "Experiment code for 'The Emergence of Complex Behavior in Large-Scale Ecological Environments'"
 readme = "README.md"
 requires-python = ">=3.11,<3.13"
 classifiers = [
@@ -28,6 +27,10 @@ dependencies = [
   "python-dotenv",
   "imageio[ffmpeg]",
 ]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["ecological_emergent_behavior*"]
 
 [project.urls]
 Homepage = "https://github.com/jbejjani2022/ecological-emergent-behavior"
