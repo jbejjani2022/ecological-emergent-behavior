@@ -1,7 +1,11 @@
 # Ecological Emergent Behavior
-![alt text](https://github.com/jbejjani2022/ecological-emergent-behavior/blob/main/images/fig1.png?raw=true)
-
 This is the experimental code for "The Emergence of Complex Behavior in Large-Scale Ecological Environments."
+
+![alt text](https://github.com/jbejjani2022/ecological-emergent-behavior/blob/main/images/fig1.png?raw=true)
+_A 3D visualization of a 512 × 512 map in our environment. Insert (a) shows a top
+down view of the entire map, (b) shows a group of agents clustered in the corner, (c) shows
+agents in the water, (d) shows agents travelling back and forth from the land and (e) shows
+a close up of a single agent gathering resources._
 
 ## Requirements
 This repository uses the [`dirt`](http://www.github.com/aaronwalsman/dirt) ecological gridworld environment and [`mechagogue`](http://www.github.com/aaronwalsman/mechagogue) training tools.
