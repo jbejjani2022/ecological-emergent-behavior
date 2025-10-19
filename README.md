@@ -74,4 +74,4 @@ This example runs experiments in the `slope` terrain with 2 different world size
 
 ## Note on Reproducibility
 Due to GPU non-determinism, we have found that using the same random seed does not guarantee identical behavior across multiple runs of our experiments.
-Therefore, when running this code, you will almost certainly not reproduce the exact same data/plots that are in the paper. However, the overall trends will be largely similar.
+Therefore, when running this code, you will almost certainly not reproduce the exact same data/plots that are in the paper. However, the primary results will be largely similar.
