@@ -53,7 +53,7 @@ The `sweep.py` script can be used to configure and run your own experiments. Aft
 - `--make_epoch_images`: Generate an image of the gridworld at each epoch (default: 1)
 - `--make_video`: Generate video of each epoch (default: 0)
 - `--vision`: Enable vision in bugs (default: 0)
-- `--epochs`: Max number of epochs to run (default: 400)
+- `--epochs`: Max number of epochs to run, where each epoch is 5,000 steps (default: 400 -> 2M steps)
 - `--seed`: Random seed (default: 0)
 
 #### Example Usage:
