@@ -1,5 +1,5 @@
 # Ecological Emergent Behavior
-This is the experimental code for "The Emergence of Complex Behavior in Large-Scale Ecological Environments."
+This is the experimental code for "[The Emergence of Complex Behavior in Large-Scale Ecological Environments](https://arxiv.org/abs/2510.18221)."
 
 ![alt text](https://github.com/jbejjani2022/ecological-emergent-behavior/blob/main/images/fig1.png?raw=true)
 _A 3D visualization of a 512 × 512 map in our environment. Insert (a) shows a top
@@ -75,3 +75,18 @@ This example runs experiments in the `slope` terrain with 2 different world size
 ## Note on Reproducibility
 Due to GPU non-determinism, we have found that using the same random seed does not guarantee identical behavior across multiple runs of our experiments.
 Therefore, when running this code, you will almost certainly not reproduce the exact same data/plots that are in the paper. However, the primary results will be largely similar.
+
+## Citation
+
+If you find this work useful in your research, please cite:
+```
+@misc{bejjani2025emergencecomplexbehaviorlargescale,
+      title={The Emergence of Complex Behavior in Large-Scale Ecological Environments}, 
+      author={Joseph Bejjani and Chase Van Amburg and Chengrui Wang and Chloe Huangyuan Su and Sarah M. Pratt and Yasin Mazloumi and Naeem Khoshnevis and Sham M. Kakade and Kianté Brantley and Aaron Walsman},
+      year={2025},
+      eprint={2510.18221},
+      archivePrefix={arXiv},
+      primaryClass={cs.MA},
+      url={https://arxiv.org/abs/2510.18221}, 
+}
+```
