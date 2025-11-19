@@ -20,6 +20,7 @@ from ecological_emergent_behavior.models.bug_model import BugModelParams
 
 
 model_params = BugModelParams(
+    big_hit=True, # only has an effect if include_violence=True
     vision_encoder_mode='flatten',
     include_backbone=True,
     backbone_mode='mlp',
