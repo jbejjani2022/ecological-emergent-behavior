@@ -37,6 +37,9 @@ def main():
     parser.add_argument("--world_sizes", type=int, nargs="+", required=True, help="World grid sizes")
     parser.add_argument("--epochs", type=int, default=400, help="Number of epochs to run")
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--base_mutation_rate", type=float, default=3e-2)
+    parser.add_argument("--initial_population", type=int, default=None)
+    parser.add_argument("--experiment_name", type=str, default=None, help="Experiment name for wandb. If not provided, defaults to {env_name}-sweep")
     args = parser.parse_args()
 
     zero_vision = not args.vision
@@ -49,6 +52,9 @@ def main():
     make_epoch_images = args.make_epoch_images
     make_video = args.make_video
     epochs = args.epochs
+    base_mutation_rate = args.base_mutation_rate
+    initial_population = args.initial_population
+    experiment_name_arg = args.experiment_name
     
     # Load wandb_entity from environment if log_wandb is true
     wandb_entity = None
@@ -81,7 +87,7 @@ def main():
         return f"{size},{size}"
 
     for world_size in world_sizes:
-        experiment_name = f"{env_name}-scale-sweep"
+        experiment_name = experiment_name_arg if experiment_name_arg is not None else f"{env_name}-sweep"
         landscape_seed = 2
         
         if world_size == 1024:  # i.e. 1024x1024
@@ -99,12 +105,16 @@ def main():
         elif world_size == 64:
             initial_players = 128
             max_players = 4096
+            
+        # override initial_players if it was given via command line
+        if initial_population is not None:
+            initial_players = initial_population
         
         layers, channels = network_size["backbone_layers"], network_size["hidden_channels"]
         vision_tag = "zero_vision" if zero_vision else "vision"
         compass_tag = "compass_on" if compass_on else "compass_off"
 
-        run_name = f"{env_name}_{world_size}_{vision_tag}_{compass_tag}_{seed}"
+        run_name = f"{base_mutation_rate}_{initial_players}_{env_name}_{world_size}_{vision_tag}_{compass_tag}_{seed}"
         output_directory = os.path.join(
             out_dir_path,
             env_name,
@@ -152,6 +162,8 @@ def main():
             str(int(violence_on)),
             "--landscape_seed",
             str(landscape_seed),
+            "--model_params-base_mutation_rate",
+            str(base_mutation_rate)
         ]
         
         # Add wandb_entity if it's set
