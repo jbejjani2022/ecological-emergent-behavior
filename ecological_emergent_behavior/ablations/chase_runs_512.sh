@@ -12,7 +12,7 @@
 #SBATCH -e error/job.%N.%j.err           # STDERR
 #SBATCH --mail-user=jbejjani@college.harvard.edu
 #SBATCH --mail-type=ALL
-#SBATCH --array=0-9
+#SBATCH --array=10-21
 
 # Load modules
 module load python/3.10.13-fasrc01
@@ -38,6 +38,6 @@ for env in slope; do
       --make_epoch_images 0 \
       --make_video 0 \
       --seed "$SLURM_ARRAY_TASK_ID" \
-      --experiment_name "chase-slope-sweep"
+      --experiment_name "512-more-chase-seeds"
   done
 done
