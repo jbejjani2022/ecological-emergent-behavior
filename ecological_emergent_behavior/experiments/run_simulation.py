@@ -181,6 +181,7 @@ def run_simulation(
         tc = params.tile_cols
         ndev = tr * tc
         devices = jax.devices()[:ndev]
+        base_natural_selection = natural_selection
 
         @static_data
         class DistributedNaturalSelection:
@@ -190,7 +191,7 @@ def run_simulation(
             def init(key):
                 keys = jrng.split(key, ndev)
                 return jax.pmap(
-                    natural_selection.init,
+                    base_natural_selection.init,
                     axis_name="mesh",
                     devices=devices,
                 )(keys)
@@ -198,15 +199,15 @@ def run_simulation(
             def step(key, state):
                 keys = jrng.split(key, ndev)
                 return jax.pmap(
-                    natural_selection.step,
+                    base_natural_selection.step,
                     axis_name="mesh",
                     devices=devices,
                 )(keys, state)
 
             def correct(state, steps):
-                if hasattr(natural_selection, "correct"):
+                if hasattr(base_natural_selection, "correct"):
                     return jax.pmap(
-                        natural_selection.correct,
+                        base_natural_selection.correct,
                         axis_name="mesh",
                         devices=devices,
                     )(state, steps)
