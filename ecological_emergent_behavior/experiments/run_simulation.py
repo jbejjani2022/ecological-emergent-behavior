@@ -182,6 +182,8 @@ def run_simulation(
         ndev = tr * tc
         devices = jax.devices()[:ndev]
         base_natural_selection = natural_selection
+        _devices = devices
+        _ndev = ndev
 
         @static_data
         class DistributedNaturalSelection:
@@ -189,8 +191,8 @@ def run_simulation(
             step_has_aux = True
             is_pmapped = True
             axis_name = "mesh"
-            devices = devices
-            ndev = ndev
+            devices = _devices
+            ndev = _ndev
 
             def init(key):
                 return base_natural_selection.init(key)
