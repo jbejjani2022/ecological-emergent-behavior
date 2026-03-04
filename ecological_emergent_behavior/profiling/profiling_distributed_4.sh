@@ -40,5 +40,5 @@ python -m ecological_emergent_behavior.experiments.sweep \
   --initial_population 2048 \
   --max_population 16384 \
   --network_size 2 64 \
-  --experiment_name "profiling-default"
+  --experiment_name "profiling-default" \
   --model_params-policy_transfer_max_k 16

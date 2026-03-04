@@ -47,6 +47,12 @@ def main():
                         help="Vision range as [max_view_width, max_view_distance, max_view_back_distance] (default: 7 3 3)")
     parser.add_argument("--tile_rows", type=int, default=1, help="Number of tile rows for distributed runs")
     parser.add_argument("--tile_cols", type=int, default=1, help="Number of tile cols for distributed runs")
+    parser.add_argument(
+        "--policy_transfer_max_k",
+        type=int,
+        default=0,
+        help="Max policies to transfer per direction per step (0 = full transfer)",
+    )
     args = parser.parse_args()
 
     zero_vision = not args.vision
@@ -67,6 +73,7 @@ def main():
     max_view_width, max_view_distance, max_view_back_distance = args.vision_range
     tile_rows = args.tile_rows
     tile_cols = args.tile_cols
+    policy_transfer_max_k = args.policy_transfer_max_k
     
     # Load wandb_entity from environment if log_wandb is true
     wandb_entity = None
@@ -188,6 +195,8 @@ def main():
             str(tile_rows),
             "--tile_cols",
             str(tile_cols),
+            "--model_params-policy_transfer_max_k",
+            str(policy_transfer_max_k),
         ]
         
         # Add wandb_entity if it's set
