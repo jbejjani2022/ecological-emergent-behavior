@@ -80,8 +80,8 @@ class BugModelParams:
     weight_decay_mode : str = 'constant'
 
     # policy migration settings
-    # 0 disables chunking; otherwise chunk size must divide max_players
-    policy_transfer_chunk : int = 0
+    # If >0, only transfer up to K migrating policies per direction per step.
+    policy_transfer_max_k : int = 0
     weight_decay : float = 0.
     mutate_traits : bool = True
     mutate_sensor_noise : bool = False
@@ -469,41 +469,8 @@ def make_bug_population(
                 tree,
             )
 
-        chunk = params.policy_transfer_chunk
-        if (
-            chunk is None
-            or chunk <= 0
-            or chunk >= params.max_players
-            or (params.max_players % chunk) != 0
-        ):
-            for i, direction in enumerate(directions):
-                src_idx = src[i]
-                dst_idx = dst[i]
-                valid = dst_idx >= 0
-                if valid.ndim == 0:
-                    valid = jnp.expand_dims(valid, 0)
-                any_valid = jnp.any(valid)
+        max_k = params.policy_transfer_max_k
 
-                def apply_dir(s):
-                    safe_src = jnp.where(valid, src_idx, 0)
-                    safe_dst = jnp.where(valid, dst_idx, 0)
-                    payload_state = ppermute_tree(s, direction)
-                    moved = tree_getitem(payload_state, safe_src)
-                    return _set_members_masked(s, safe_dst, moved, valid)
-
-                state = jax.lax.cond(any_valid, apply_dir, lambda s: s, state)
-            return state
-
-        def slice_tree(tree, start, size):
-            def leaf_slice(leaf):
-                return jax.lax.dynamic_slice(
-                    leaf,
-                    (start,) + (0,) * (leaf.ndim - 1),
-                    (size,) + leaf.shape[1:],
-                )
-            return jax.tree.map(leaf_slice, tree)
-
-        num_chunks = params.max_players // chunk
         for i, direction in enumerate(directions):
             src_idx = src[i]
             dst_idx = dst[i]
@@ -511,43 +478,46 @@ def make_bug_population(
             if valid.ndim == 0:
                 valid = jnp.expand_dims(valid, 0)
             any_valid = jnp.any(valid)
+            any_valid_global = (
+                jax.lax.pmax(any_valid.astype(jnp.int32), axis_name="mesh") > 0
+            )
 
-            def apply_dir(s):
-                chunk_has_any = jnp.zeros((num_chunks,), dtype=jnp.bool_)
-                for c in range(num_chunks):
-                    start = c * chunk
-                    end = start + chunk
-                    chunk_has_any = chunk_has_any.at[c].set(
-                        jnp.any(valid & (src_idx >= start) & (src_idx < end))
-                    )
+            def apply_dir_full(s):
+                safe_src = jnp.where(valid, src_idx, 0)
+                safe_dst = jnp.where(valid, dst_idx, 0)
+                payload_state = ppermute_tree(s, direction)
+                moved = tree_getitem(payload_state, safe_src)
+                return _set_members_masked(s, safe_dst, moved, valid)
 
-                def cond_fun(carry):
-                    _s, _flags = carry
-                    return jnp.any(_flags)
+            def apply_dir_k(s):
+                if max_k <= 0 or max_k >= params.max_players:
+                    return apply_dir_full(s)
+                selected = jnp.nonzero(
+                    valid, size=max_k, fill_value=-1
+                )[0]
+                sel_valid = selected >= 0
+                safe_src = jnp.where(sel_valid, selected, 0)
+                payload_state = tree_getitem(s, safe_src)
+                payload_dst = dst_idx[safe_src]
 
-                def body_fun(carry):
-                    _s, _flags = carry
-                    c = jnp.argmax(_flags)
-                    start = c * chunk
-                    end = start + chunk
-                    chunk_mask = (
-                        valid &
-                        (src_idx >= start) &
-                        (src_idx < end)
-                    )
-                    payload_chunk = ppermute_tree(
-                        slice_tree(_s, start, chunk), direction)
-                    safe_src = jnp.where(chunk_mask, src_idx - start, 0)
-                    safe_dst = jnp.where(chunk_mask, dst_idx, 0)
-                    moved = tree_getitem(payload_chunk, safe_src)
-                    _s = _set_members_masked(_s, safe_dst, moved, chunk_mask)
-                    _flags = _flags.at[c].set(False)
-                    return _s, _flags
+                payload_state = ppermute_tree(payload_state, direction)
+                payload_dst = jax.lax.ppermute(
+                    payload_dst, axis_name="mesh", perm=perms[direction]
+                )
+                payload_valid = jax.lax.ppermute(
+                    sel_valid, axis_name="mesh", perm=perms[direction]
+                )
+                recv_valid = payload_valid & (payload_dst >= 0)
+                return _set_members_masked(
+                    s, payload_dst, payload_state, recv_valid
+                )
 
-                s, _ = jax.lax.while_loop(cond_fun, body_fun, (s, chunk_has_any))
-                return s
-
-            state = jax.lax.cond(any_valid, apply_dir, lambda s: s, state)
+            state = jax.lax.cond(
+                any_valid_global,
+                apply_dir_k,
+                lambda s: s,
+                state,
+            )
 
         return state
 
