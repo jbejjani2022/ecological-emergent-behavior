@@ -438,6 +438,18 @@ def make_bug_population(
             return jnp.where(mask.reshape(mask_shape), updated, leaf)
         return jax.tree.map(leaf_set, state, values)
 
+    def _set_members_indexed(state, index, values, valid, max_players):
+        safe_idx = jnp.where(valid, index, 0)
+        full_mask = jnp.zeros((max_players,), dtype=jnp.bool_)
+        full_mask = full_mask.at[safe_idx].set(valid)
+
+        def leaf_set(leaf, leaf_value):
+            updated = leaf.at[safe_idx].set(leaf_value)
+            mask_shape = (full_mask.shape[0],) + (1,) * (leaf.ndim - 1)
+            return jnp.where(full_mask.reshape(mask_shape), updated, leaf)
+
+        return jax.tree.map(leaf_set, state, values)
+
     def migrate(state, migrations):
         if migrations is None:
             return state
@@ -508,8 +520,8 @@ def make_bug_population(
                     sel_valid, axis_name="mesh", perm=perms[direction]
                 )
                 recv_valid = payload_valid & (payload_dst >= 0)
-                return _set_members_masked(
-                    s, payload_dst, payload_state, recv_valid
+                return _set_members_indexed(
+                    s, payload_dst, payload_state, recv_valid, params.max_players
                 )
 
             state = jax.lax.cond(
