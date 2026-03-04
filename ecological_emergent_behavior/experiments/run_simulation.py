@@ -188,30 +188,19 @@ def run_simulation(
             init_has_aux = True
             step_has_aux = True
             is_pmapped = True
+            axis_name = "mesh"
+            devices = devices
+            ndev = ndev
 
             def init(key):
-                keys = jrng.split(key, ndev)
-                return jax.pmap(
-                    base_natural_selection.init,
-                    axis_name="mesh",
-                    devices=devices,
-                )(keys)
+                return base_natural_selection.init(key)
 
             def step(key, state):
-                keys = jrng.split(key, ndev)
-                return jax.pmap(
-                    base_natural_selection.step,
-                    axis_name="mesh",
-                    devices=devices,
-                )(keys, state)
+                return base_natural_selection.step(key, state)
 
             def correct(state, steps):
                 if hasattr(base_natural_selection, "correct"):
-                    return jax.pmap(
-                        base_natural_selection.correct,
-                        axis_name="mesh",
-                        devices=devices,
-                    )(state, steps)
+                    return base_natural_selection.correct(state, steps)
                 return state
 
         natural_selection = DistributedNaturalSelection
