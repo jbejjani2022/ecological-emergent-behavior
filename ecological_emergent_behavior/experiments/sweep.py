@@ -39,7 +39,12 @@ def main():
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--base_mutation_rate", type=float, default=3e-2)
     parser.add_argument("--initial_population", type=int, default=None)
+    parser.add_argument("--max_population", type=int, default=None)
     parser.add_argument("--experiment_name", type=str, default=None, help="Experiment name for wandb. If not provided, defaults to {env_name}-sweep")
+    parser.add_argument("--network_size", type=int, nargs=2, default=[2, 64], 
+                        help="Network size as [backbone_layers, hidden_channels] (default: 2 64)")
+    parser.add_argument("--vision_range", type=int, nargs=3, default=[7, 3, 3],
+                        help="Vision range as [max_view_width, max_view_distance, max_view_back_distance] (default: 7 3 3)")
     args = parser.parse_args()
 
     zero_vision = not args.vision
@@ -54,7 +59,10 @@ def main():
     epochs = args.epochs
     base_mutation_rate = args.base_mutation_rate
     initial_population = args.initial_population
+    max_population = args.max_population
     experiment_name_arg = args.experiment_name
+    backbone_layers, hidden_channels = args.network_size
+    max_view_width, max_view_distance, max_view_back_distance = args.vision_range
     
     # Load wandb_entity from environment if log_wandb is true
     wandb_entity = None
@@ -65,7 +73,6 @@ def main():
     
     # Variables to sweep
     world_sizes = args.world_sizes
-    network_size = {"backbone_layers": 2, "hidden_channels": 64}
 
     env_flag_map = {
         "ocean": {
@@ -109,12 +116,15 @@ def main():
         # override initial_players if it was given via command line
         if initial_population is not None:
             initial_players = initial_population
+        if max_population is not None:
+            max_players = max_population
         
-        layers, channels = network_size["backbone_layers"], network_size["hidden_channels"]
+        layers, channels = backbone_layers, hidden_channels
         vision_tag = "zero_vision" if zero_vision else "vision"
         compass_tag = "compass_on" if compass_on else "compass_off"
+        vision_range_tag = f"vr_{max_view_width}_{max_view_distance}_{max_view_back_distance}"
 
-        run_name = f"{base_mutation_rate}_{initial_players}_{env_name}_{world_size}_{vision_tag}_{compass_tag}_{seed}"
+        run_name = f"{base_mutation_rate}_{initial_players}_{env_name}_{world_size}_{vision_tag}_{compass_tag}_{vision_range_tag}_{seed}"
         output_directory = os.path.join(
             out_dir_path,
             env_name,
@@ -163,7 +173,13 @@ def main():
             "--landscape_seed",
             str(landscape_seed),
             "--model_params-base_mutation_rate",
-            str(base_mutation_rate)
+            str(base_mutation_rate),
+            "--max_view_width",
+            str(max_view_width),
+            "--max_view_distance",
+            str(max_view_distance),
+            "--max_view_back_distance",
+            str(max_view_back_distance)
         ]
         
         # Add wandb_entity if it's set
