@@ -513,7 +513,21 @@ def make_bug_population(
             any_valid = jnp.any(valid)
 
             def apply_dir(s):
+                chunk_has_any = jnp.zeros((num_chunks,), dtype=jnp.bool_)
                 for c in range(num_chunks):
+                    start = c * chunk
+                    end = start + chunk
+                    chunk_has_any = chunk_has_any.at[c].set(
+                        jnp.any(valid & (src_idx >= start) & (src_idx < end))
+                    )
+
+                def cond_fun(carry):
+                    _s, _flags = carry
+                    return jnp.any(_flags)
+
+                def body_fun(carry):
+                    _s, _flags = carry
+                    c = jnp.argmax(_flags)
                     start = c * chunk
                     end = start + chunk
                     chunk_mask = (
@@ -521,18 +535,16 @@ def make_bug_population(
                         (src_idx >= start) &
                         (src_idx < end)
                     )
-                    any_chunk = jnp.any(chunk_mask)
+                    payload_chunk = ppermute_tree(
+                        slice_tree(_s, start, chunk), direction)
+                    safe_src = jnp.where(chunk_mask, src_idx - start, 0)
+                    safe_dst = jnp.where(chunk_mask, dst_idx, 0)
+                    moved = tree_getitem(payload_chunk, safe_src)
+                    _s = _set_members_masked(_s, safe_dst, moved, chunk_mask)
+                    _flags = _flags.at[c].set(False)
+                    return _s, _flags
 
-                    def apply_chunk(ss):
-                        payload_chunk = ppermute_tree(
-                            slice_tree(ss, start, chunk), direction)
-                        safe_src = jnp.where(chunk_mask, src_idx - start, 0)
-                        safe_dst = jnp.where(chunk_mask, dst_idx, 0)
-                        moved = tree_getitem(payload_chunk, safe_src)
-                        return _set_members_masked(
-                            ss, safe_dst, moved, chunk_mask)
-
-                    s = jax.lax.cond(any_chunk, apply_chunk, lambda ss: ss, s)
+                s, _ = jax.lax.while_loop(cond_fun, body_fun, (s, chunk_has_any))
                 return s
 
             state = jax.lax.cond(any_valid, apply_dir, lambda s: s, state)

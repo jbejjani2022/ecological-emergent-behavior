@@ -187,6 +187,7 @@ def run_simulation(
         class DistributedNaturalSelection:
             init_has_aux = True
             step_has_aux = True
+            is_pmapped = True
 
             def init(key):
                 keys = jrng.split(key, ndev)
