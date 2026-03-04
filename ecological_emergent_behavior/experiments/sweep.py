@@ -45,6 +45,8 @@ def main():
                         help="Network size as [backbone_layers, hidden_channels] (default: 2 64)")
     parser.add_argument("--vision_range", type=int, nargs=3, default=[7, 3, 3],
                         help="Vision range as [max_view_width, max_view_distance, max_view_back_distance] (default: 7 3 3)")
+    parser.add_argument("--tile_rows", type=int, default=1, help="Number of tile rows for distributed runs")
+    parser.add_argument("--tile_cols", type=int, default=1, help="Number of tile cols for distributed runs")
     args = parser.parse_args()
 
     zero_vision = not args.vision
@@ -63,6 +65,8 @@ def main():
     experiment_name_arg = args.experiment_name
     backbone_layers, hidden_channels = args.network_size
     max_view_width, max_view_distance, max_view_back_distance = args.vision_range
+    tile_rows = args.tile_rows
+    tile_cols = args.tile_cols
     
     # Load wandb_entity from environment if log_wandb is true
     wandb_entity = None
@@ -179,7 +183,11 @@ def main():
             "--max_view_distance",
             str(max_view_distance),
             "--max_view_back_distance",
-            str(max_view_back_distance)
+            str(max_view_back_distance),
+            "--tile_rows",
+            str(tile_rows),
+            "--tile_cols",
+            str(tile_cols),
         ]
         
         # Add wandb_entity if it's set

@@ -10,7 +10,8 @@ from mechagogue.nn.mlp import mlp
 from mechagogue.nn.distributions import categorical_sampler_layer
 from mechagogue.nn.utils import num_parameters
 from mechagogue.ecology.policy import make_ecology_population
-from mechagogue.tree import tree_getitem
+from mechagogue.tree import tree_getitem, tree_setitem
+from dirt.gridworld2d.distributed import _make_perms
 from mechagogue.breed.normal import normal_mutate
 
 from dirt.constants import DEFAULT_FLOAT_DTYPE
@@ -425,6 +426,61 @@ def make_bug_population(
         params.max_players,
         breed,
     )
+
+    def _set_members_masked(state, index, values, mask):
+        def leaf_set(leaf, leaf_value):
+            updated = leaf.at[index].set(leaf_value)
+            mask_shape = (mask.shape[0],) + (1,) * (leaf.ndim - 1)
+            return jnp.where(mask.reshape(mask_shape), updated, leaf)
+        return jax.tree.map(leaf_set, state, values)
+
+    def migrate(state, migrations):
+        if migrations is None:
+            return state
+        src, dst = migrations
+        if src is None or dst is None:
+            return state
+        if not getattr(env, "distributed", False):
+            return state
+        tile_dimensions = getattr(env, "tile_dimensions", (1, 1))
+        if tile_dimensions == (1, 1):
+            return state
+
+        perms = _make_perms(*tile_dimensions)
+        directions = [
+            "up",
+            "down",
+            "left",
+            "right",
+            "up_left",
+            "up_right",
+            "down_left",
+            "down_right",
+        ]
+
+        # TODO(perf): transfer in chunks and early-exit when no valid moves remain.
+        def ppermute_tree(tree, direction):
+            return jax.tree.map(
+                lambda leaf: jax.lax.ppermute(
+                    leaf, axis_name="mesh", perm=perms[direction]),
+                tree,
+            )
+
+        for i, direction in enumerate(directions):
+            src_idx = src[i]
+            dst_idx = dst[i]
+            valid = dst_idx >= 0
+            if valid.ndim == 0:
+                valid = jnp.expand_dims(valid, 0)
+            safe_src = jnp.where(valid, src_idx, 0)
+            safe_dst = jnp.where(valid, dst_idx, 0)
+            payload_state = ppermute_tree(state, direction)
+            moved = tree_getitem(payload_state, safe_src)
+            state = _set_members_masked(state, safe_dst, moved, valid)
+
+        return state
+
+    population.migrate = staticmethod(migrate)
     
     def log(key, state, obs, active):
         keys = jrng.split(key, params.max_players)

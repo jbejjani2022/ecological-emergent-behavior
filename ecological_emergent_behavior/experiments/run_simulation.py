@@ -12,6 +12,7 @@ from dataclasses import asdict
 from dotenv import load_dotenv, find_dotenv
 
 import wandb
+import jax
 import jax.random as jrng
 import jax.numpy as jnp
 
@@ -56,6 +57,8 @@ class TrainParams:
     initial_players : int = 8192
     max_players : int = 8192
     world_size : Tuple[int,int] = (1024,1024)
+    tile_rows : int = 1
+    tile_cols : int = 1
     env_params : TeraAriumParams = TeraAriumParams()
     natural_selection_params : NaturalSelectionParams = NaturalSelectionParams()
     
@@ -124,7 +127,43 @@ def run_simulation(
     key = jrng.key(params.seed)
     
     # build the environment
-    env = make_tera_arium(params.env_params, train_float_dtype)
+    distributed = (params.tile_rows * params.tile_cols) > 1
+    env_params = params.env_params.replace(
+        distributed=distributed,
+        tile_dimensions=(params.tile_rows, params.tile_cols),
+        world_size=params.world_size,
+        initial_players=params.initial_players,
+        max_players=params.max_players,
+        include_rock=params.include_rock,
+        include_water=params.include_water,
+        include_energy=params.include_energy,
+        include_biomass=params.include_biomass,
+        include_wind=params.include_wind,
+        include_temperature=params.include_temperature,
+        include_rain=params.include_rain,
+        include_light=params.include_light,
+        include_audio=params.include_audio,
+        audio_channels=params.audio_channels,
+        include_smell=params.include_smell,
+        smell_channels=params.smell_channels,
+        include_compass=params.include_compass,
+        include_violence=params.include_violence,
+        include_expell_actions=params.include_expell_actions,
+        max_view_width=params.max_view_width,
+        max_view_distance=params.max_view_distance,
+        max_view_back_distance=params.max_view_back_distance,
+        vision_includes_rgb=params.vision_includes_rgb,
+        vision_includes_relative_altitude=params.vision_includes_relative_altitude,
+        rock_mode=params.rock_mode,
+        rock_bias=params.rock_bias,
+        landscape_seed=params.landscape_seed,
+        report_bug_actions=params.report_bug_actions,
+        report_bug_internals=params.report_bug_internals,
+        report_bug_traits=params.report_bug_traits,
+        report_object_grid=params.report_object_grid,
+        report_homicides=params.report_homicides,
+    )
+    env = make_tera_arium(env_params, train_float_dtype)
     
     # build the population
     population = make_bug_population(
@@ -132,17 +171,55 @@ def run_simulation(
     
     # build the trainer
     natural_selection = make_natural_selection(
-        params.natural_selection_params,
+        params.natural_selection_params.replace(max_players=params.max_players),
         env,
         population,
     )
+
+    if distributed:
+        tr = params.tile_rows
+        tc = params.tile_cols
+        ndev = tr * tc
+        devices = jax.devices()[:ndev]
+
+        @static_data
+        class DistributedNaturalSelection:
+            init_has_aux = True
+            step_has_aux = True
+
+            def init(key):
+                keys = jrng.split(key, ndev)
+                return jax.pmap(
+                    natural_selection.init,
+                    axis_name="mesh",
+                    devices=devices,
+                )(keys)
+
+            def step(key, state):
+                keys = jrng.split(key, ndev)
+                return jax.pmap(
+                    natural_selection.step,
+                    axis_name="mesh",
+                    devices=devices,
+                )(keys, state)
+
+            def correct(state, steps):
+                if hasattr(natural_selection, "correct"):
+                    return jax.pmap(
+                        natural_selection.correct,
+                        axis_name="mesh",
+                        devices=devices,
+                    )(state, steps)
+                return state
+
+        natural_selection = DistributedNaturalSelection
     
     # set up the reporting
     Report = make_blank_report(env, params.make_video, params.report_visualizer_data, params.report_family_tree, params.report_homicides)
     make_report = make_reporting(Report, env, params.make_video, params.report_visualizer_data, params.report_family_tree, params.report_homicides)
     
     # make the logger
-    log = make_logger(env, params.env_params, population, params.model_params.backbone_mode, params.log_wandb, params.make_video, params.make_epoch_images, params.output_directory)
+    log = make_logger(env, env_params, population, params.model_params.backbone_mode, params.log_wandb, params.make_video, params.make_epoch_images, params.output_directory)
     
     # make the epoch system
     epoch_system = make_epoch_system(

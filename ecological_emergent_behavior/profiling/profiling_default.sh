@@ -27,6 +27,8 @@ python -m ecological_emergent_behavior.experiments.sweep \
   --output_dir /n/netscratch/sham_lab/Everyone/jbejjani/ecological_emergent_behavior/profiling-default \
   --env fractal \
   --world_sizes 256 \
+  --tile_rows 1 \
+  --tile_cols 1 \
   --compass 0 \
   --vision 1 \
   --violence 0 \
