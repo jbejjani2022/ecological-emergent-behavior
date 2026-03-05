@@ -11,6 +11,8 @@ from mechagogue.static import static_data
 def make_blank_report(env, make_video, report_visualizer_data, report_family_tree, report_homicides):
     @static_data
     class Report:
+        migration_count : int = 0
+
         if make_video:
             video_frames: Any = False
         
@@ -31,6 +33,10 @@ def make_blank_report(env, make_video, report_visualizer_data, report_family_tre
 def make_reporting(Report, env, make_video, report_visualizer_data, report_family_tree, report_homicides):
     def make_report(state, players, parents, children, actions, traits):
         report = Report()
+        if hasattr(state.env_state, "migration_dst"):
+            report = report.replace(
+                migration_count=jnp.sum(state.env_state.migration_dst >= 0)
+            )
         if make_video:
             report = report.replace(
                 video_frames = env.make_video_report(state.env_state))

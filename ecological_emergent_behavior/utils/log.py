@@ -5,6 +5,7 @@ and bug trait data to wandb (optionally).
 
 import os
 import numpy as np
+import jax
 import wandb
 import jax.numpy as jnp
 import imageio as imageio
@@ -361,7 +362,17 @@ def make_logger(env, env_params, population, backbone_mode, log_wandb, make_vide
             
             datapoint.update(population.log(key, state.population_state, state.obs, active))
 
+            if reports is not None and hasattr(reports, "migration_count"):
+                migration_total = jnp.sum(reports.migration_count)
+                migration_total = np.array(jax.device_get(migration_total)).sum()
+                datapoint['general/migrations'] = migration_total
+
             wandb.log(datapoint, step=t)
+
+        if reports is not None and hasattr(reports, "migration_count"):
+            migration_total = jnp.sum(reports.migration_count)
+            migration_total = np.array(jax.device_get(migration_total)).sum()
+            print(f'epoch {epoch} migrations: {int(migration_total)}')
         
         if make_video and reports is not None:
             video_frames = np.array(reports.video_frames).astype(np.uint8)
